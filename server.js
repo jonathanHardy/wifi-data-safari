@@ -7,6 +7,7 @@ const { DNSParser } = require('./src/DNSParser')
 const { updateVendorMacs, getNetInterfaces } = require('./src/utils')
 const express = require('express')
 var commandExistsSync = require('command-exists').sync
+const { GPSDWarDriver } = require('./src/GPSDWarDriver')
 
 const app = express()
 const server = require('http').Server(app)
@@ -18,6 +19,7 @@ const dnsParser      = new DNSParser()
 let airodumpProc = null
 let tcpdumpProc = null
 let iface = null
+let gpsdWarDriver = null
 let airodumpCSVfile
 
 main()
@@ -49,6 +51,11 @@ function main() {
 
 	if (args.dns && !commandExistsSync('tcpdump')) {
 		console.error('[error] --dns flag is present but tcpdump is not installed. Please install tcpdump to use the --dns flag.')
+		process.exit(1)
+	}
+
+	if (args.gpsd && !commandExistsSync('gpsd')) {
+		console.error('[error] --gpsd flag is present but gpsd is not installed. Please install gpsd to use the --gpsd flag.')
 		process.exit(1)
 	}
 
@@ -96,6 +103,10 @@ function launch(args) {
 
 	if (args.dns) {
 		spawnTcpdump(iface)
+	}
+
+	if (args.gpsd) {
+		gpsdWarDriver = new GPSDWarDriver(args['gpsd_port'], args['gpsd_device'])
 	}
 
 	app.use(express.static('www'))
@@ -211,6 +222,13 @@ function cleanup(args) {
 		console.log('[info] tcpdump process exited')
 	}
 
+	if (gpsdWarDriver) {
+		// Killing the gpsd daemon is asynchronous, so this isn't guaranteed
+		// to terminate before this process finishes. This could leave a zombie
+		// gpsd process running... beware.
+		gpsdWarDriver.kill(() => console.log('[info] gpsd process exited'))	
+	}
+
 	// if the interface was create with airmon-ng
 	// remove it
 	if (iface && args.iface.indexOf('mon') < 0) {
@@ -294,6 +312,24 @@ function parseArguments() {
 		help: 'Use tcpdump to monitor DNS traffic on --iface and broadcast records to connected clients via websockets.',
 		nargs: 0
 	})
+
+	parser.addArgument(['-g', '--gpsd'], {
+		help: 'Use gpsd to collect wardriving data.',
+		nargs: 0
+	})
+
+	parser.addArgument(['-m', '--gpsd-port'], {
+		help: 'The port to run a gpsd server on if the --gpsd flag is present (default: 3005)',
+		defaultValue: 3005,
+		type: 'int'
+	})
+
+	parser.addArgument(['-n', '--gpsd-device'], {
+		help: 'The GPS device to use if the --gpsd flag is present (default: /dev/ttyACM0)',
+		defaultValue: '/dev/ttyACM0',
+		type: 'string'
+	})
+
 
 	parser.addArgument(['-u', '--update-vendor-macs'], {
 		help: 'Update the vendor MAC address database. Must have an internet connection.',
