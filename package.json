@@ -21,14 +21,14 @@
   "dependencies": {
     "argparse": "^1.0.9",
     "command-exists": "^1.2.2",
-    "csv-parse": "^2.0.0",
+    "csv-parse": "^5.0.4",
     "express": "^4.16.2",
     "is-root": "^1.0.0",
-    "mac-lookup": "^0.1.7",
-    "socket.io": "^2.0.4",
+    "mac-lookup": "^1.0.1",
+    "socket.io": "^4.4.1",
     "underscore": "^1.8.3"
   },
   "devDependencies": {
-    "electron": "^1.8.4"
+    "electron": "^18.0.1"
   }
 }
